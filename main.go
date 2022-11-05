@@ -36,7 +36,12 @@ func getHello(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	fmt.Printf("%s: got /hello request\n", ctx.Value(keyServerAddr))
-	io.WriteString(w, "Hello, HTTP!\n")
+
+	myName := r.PostFormValue("myName")
+	if myName == "" {
+		myName = "HTTP"
+	}
+	io.WriteString(w, fmt.Sprintf("Hello, %s\n", myName))
 }
 
 func main() {
