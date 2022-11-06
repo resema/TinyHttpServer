@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -43,8 +44,11 @@ func main() {
 
 	time.Sleep(100 * time.Millisecond)
 
-	requestURL := fmt.Sprintf("http://localhost:%d", serverPort)
-	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
+	jsonBody := []byte(`{"client_message": "hello, server!"}`)
+	bodyReader := bytes.NewReader(jsonBody)
+
+	requestURL := fmt.Sprintf("http://localhost:%d?id=4211", serverPort)
+	req, err := http.NewRequest(http.MethodPost, requestURL, bodyReader)
 	if err != nil {
 		fmt.Printf("client: could not create request: %s\n", err)
 		os.Exit(1)
