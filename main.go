@@ -53,8 +53,12 @@ func main() {
 		fmt.Printf("client: could not create request: %s\n", err)
 		os.Exit(1)
 	}
+	req.Header.Set("Content-Type", "application/json")
+	client := http.Client{
+		Timeout: 30 * time.Second,
+	}
 
-	res, err := http.DefaultClient.Do(req)
+	res, err := client.Do(req)
 	if err != nil {
 		fmt.Printf("Client: error making http request: %s\n", err)
 		os.Exit(1)
