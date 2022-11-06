@@ -1,70 +1,41 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"net"
 	"net/http"
+	"os"
+	"time"
 )
 
-const keyServerAddr = "serverAddr"
-
-func getRoot(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	hasFirst := r.URL.Query().Has("first")
-	first := r.URL.Query().Get("first")
-	hasSecond := r.URL.Query().Has("second")
-	second := r.URL.Query().Get("second")
-
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		fmt.Printf("could not read body: %s\n", err)
-	}
-
-	fmt.Printf("%s: got / request. first(%t)=%s, second(%t)=%s, body:\n%s\n",
-		ctx.Value(keyServerAddr),
-		hasFirst, first,
-		hasSecond, second,
-		body)
-	io.WriteString(w, "This is my website!\n")
-}
-func getHello(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	fmt.Printf("%s: got /hello request\n", ctx.Value(keyServerAddr))
-
-	myName := r.PostFormValue("myName")
-	if myName == "" {
-		w.Header().Set("x-missing-field", "myName")
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	io.WriteString(w, fmt.Sprintf("Hello, %s\n", myName))
-}
+const serverPort = 3333
 
 func main() {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", getRoot)
-	mux.HandleFunc("/hello", getHello)
+	go func() {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Printf("server: %s /\n", r.Method)
+		})
+		server := http.Server{
+			Addr:    fmt.Sprintf(":%d", serverPort),
+			Handler: mux,
+		}
+		if err := server.ListenAndServe(); err != nil {
+			if !errors.Is(err, http.ErrServerClosed) {
+				fmt.Printf("error running http server: %s\n", err)
+			}
+		}
+	}()
 
-	ctx := context.Background()
-	server := &http.Server{
-		Addr:    ":3333",
-		Handler: mux,
-		BaseContext: func(l net.Listener) context.Context {
-			ctx = context.WithValue(ctx, keyServerAddr, l.Addr().String())
-			return ctx
-		},
+	time.Sleep(100 * time.Millisecond)
+
+	requestURL := fmt.Sprintf("http://localhost:%d", serverPort)
+	res, err := http.Get(requestURL)
+	if err != nil {
+		fmt.Printf("error making http request: %s\n", err)
+		os.Exit(1)
 	}
 
-	err := server.ListenAndServe()
-	if errors.Is(err, http.ErrServerClosed) {
-		fmt.Printf("server closed\n")
-	} else if err != nil {
-		fmt.Printf("error listening for server: %s\n", err)
-	}
+	fmt.Printf("client: got response!\n")
+	fmt.Printf("client: status code: %d\n", res.StatusCode)
 }
